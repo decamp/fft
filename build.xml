@@ -1,0 +1,289 @@
+<project name="fft" default="jar" basedir=".">
+  <description>
+    FFT Library
+  </description>
+  
+  <!-- Version control system. Options: "git", "svn", or "unversioned". -->
+  <target name="vcs" depends="git" />
+  
+  <!-- Source code packaging. Options:
+    "no-source"       Do not package source
+    "source-in-jar"   Include source in same jar as class files.
+    "source-own-jar"  Package source into separate jar file. -->
+  <target name="include-source" depends="source-own-jar" />
+  
+  <property name="domain.name"    value="bits" />  
+  <property name="jvm.target"     value="1.5" />
+  <property name="dst.dir"        value="target" />
+  <property name="dst.name"       value="${domain.name}_${ant.project.name}" />
+  <property name="src.dir"        value="src/main/java" />
+  <property name="resources.dir"  value="src/main/resources" />
+  <property name="build.dir"      value="scratch/main/java" />
+  <property name="test.src.dir"   value="src/test/java" />
+  <property name="test.build.dir" value="scratch/test/java" />
+  <property name="lib.dir"        value="lib" />
+  <property name="buildtools.dir" value="buildtools" />
+  <property name="meta.build.dir" value="scratch/ant" />
+  
+  <property name="app.name"       value="" />
+  <property name="app.main"       value="" />
+  <property name="app.icon"       value="" />
+    
+  <path id="classpath">
+    <fileset dir="${lib.dir}">
+      <include name="*.jar"/>
+    </fileset>
+  </path>
+  
+
+  <!--============================
+      Project Specific Targets
+      ============================-->  
+  
+  <!--============================
+      Building
+      ============================-->
+
+  <target name="init">
+    <tstamp>
+      <format property="timestamp"         pattern="yyyy-MM-dd HH:mm" />
+      <format property="timestamp.nospace" pattern="yyyy-MM-dd_HHmm" />
+    </tstamp>
+  </target>
+  
+  
+  <target name="clean" description="Delete scratch directories" >
+    <delete dir="${build.dir}" />
+    <delete dir="${test.build.dir}" />
+    <delete dir="${meta.build.dir}" />
+  </target>
+  
+  
+  <target name="compile" depends="init" description="Compile source" >
+    <mkdir dir="${build.dir}" />
+    <javac srcdir="${src.dir}" destdir="${build.dir}" debug="yes" fork="yes" target="${jvm.target}" includeantruntime="false">
+      <classpath> 
+        <path refid="classpath"/>
+      </classpath>
+    </javac>
+  </target>
+        
+    
+  <target name="compile-test" depends="compile" description="Compile test source" >
+    <mkdir dir="${test.build.dir}" />
+    <javac srcdir="${test.src.dir}" destdir="${test.build.dir}" debug="yes" nowarn="true" target="${jvm.target}" includeantruntime="false">
+      <classpath>
+        <path refid="classpath" />
+        <pathelement location="${build.dir}" />
+      </classpath>
+    </javac>
+  </target>
+
+
+  <target name="jar" depends="include-source" description="Generate target jars" >
+    <!-- Cleanup. See jar-begin. -->
+    <delete>
+      <fileset refid="jar.meta.gen" />
+    </delete>
+    <delete file="${manifest.path}" />
+  </target>
+
+
+  <target name="jar-begin" depends="compile,vcs" >
+    <property name="jar.file" value="${dst.dir}/${dst.name}.jar" />
+
+    <mkdir dir="${dst.dir}" />
+    <mkdir dir="${meta.build.dir}" />
+
+    <property name="manifest.path"  value="${meta.build.dir}/MANIFEST.MF" />
+    <property name="version.file"   value="VERSION_${version}" />
+    <property name="timestamp.file" value="TIMESTAMP_${timestamp.nospace}" />
+
+    <manifest file="${manifest.path}" >
+      <attribute name="Built-By"        value="${user.name}"/>
+      <attribute name="Build-Version"   value="${version}" />
+      <attribute name="Build-Timestamp" value="${timestamp}" />
+    </manifest>
+
+    <!-- Add empty file with the version number in it. -->
+    <touch file="${meta.build.dir}/${version.file}" />
+    <touch file="${meta.build.dir}/${timestamp.file}" />
+
+    <fileset id="jar.meta.gen" dir="${meta.build.dir}" >
+      <include name="${version.file}" />
+      <include name="${timestamp.file}" />
+    </fileset>
+
+    <fileset id="jar.meta.root" dir=".">
+      <include name="README.TXT" />
+      <include name="LICENSE.TXT" />
+    </fileset>
+
+    <jar jarfile="${jar.file}" basedir="${build.dir}" manifest="${manifest.path}" >
+      <metainf refid="jar.meta.root" />
+      <metainf refid="jar.meta.gen" />
+    </jar>
+  </target>
+
+
+  <target name="no-source" depends="jar-begin" >
+    <echo message="Source code will not be packaged." />
+  </target>
+
+
+  <target name="source-in-jar" depends="jar-begin" >
+    <echo message="Source code will be merged with target jar." />
+    <jar jarfile="${jar.file}" update="true" basedir="${src.dir}" />
+  </target>
+
+
+  <target name="source-own-jar" depends="jar-begin" >
+    <jar jarfile="${dst.dir}/${dst.name}-source.jar" manifest="${manifest.path}" >
+      <fileset dir="${src.dir}" />
+      <metainf refid="jar.meta.gen" />
+      <metainf refid="jar.meta.root" />
+    </jar>
+  </target>
+    
+  
+  <!--============================
+      Packaging
+      ======================= -->
+  
+  <target name="app" depends="jar" description="Create the ${app.name} application bundle.">
+    <property name="bundle.name" value="${app.name}.app" />
+    <exec executable="python">
+      <arg value="${buildtools.dir}/bundle_app" />
+      <arg value="${app.main}" />
+      <arg value="${dst.dir}/${bundle.name}" />
+      <arg value="-w" />
+      <arg value="-s" /><arg value="${buildtools.dir}/JavaApplicationStub" />
+      <arg value="-n" /><arg value="${app.name}" />
+      <arg value="-r" /><arg value="${dst.dir}/${dst.name}.jar" />
+      <arg value="-r" /><arg value="${lib.dir}" />
+      <arg value="-r" /><arg value="${resources.dir}" />
+      <arg value="-i" /><arg value="${app.icon}" />
+      <arg value="-J" /><arg value="-Xmx1024M" />
+    </exec>
+  </target>
+  
+
+  <!--============================
+      Testing
+      ============================ -->    
+
+  <target name="test" depends="compile-test">
+    <junit haltonfailure="true">
+      <formatter type="plain" usefile="false"/>
+    
+      <classpath>
+        <path refid="classpath" />
+        <pathelement location="${build.dir}" />
+        <pathelement location="${test.build.dir}" />
+      </classpath>
+        
+      <batchtest fork="yes">
+        <fileset dir="${test.src.dir}">
+          <include name="**/*Test*.java"/>
+          <include name="**/*Unit*.java"/>
+        </fileset>
+      </batchtest>
+    </junit>
+  </target>
+    
+  
+  <!--============================
+      Version Control Systems
+      ============================ -->
+  
+  <target name="unversioned" >
+    <property name="version" value="unversioned" />
+  </target>
+  
+    
+  <!-- SVN Targets -->
+  
+  <target name="svn" depends="svn-check" unless="version.clean" >
+    <echo message="WARNING: Project contains unversioned modifications." />
+  </target>
+  
+  
+  <target name="svn-check" description="Sets version based on svn.">
+    <exec executable="svnversion" dir="." outputproperty="version" >
+      <arg line="."/>
+    </exec>
+    
+    <condition property="version.clean">
+      <not>
+        <or>
+          <contains string="${version}" substring=":"/>
+          <contains string="${version}" substring="M"/>
+          <contains string="${version}" substring="S"/>
+        </or>
+      </not>
+    </condition>
+    <echo message="version = ${version}"/>
+  </target>
+  
+    
+  
+  <!-- GIT Targets -->
+  
+  <target name="git" depends="git-check-ok,git-check-warning,git-check-fatal" />
+  
+  
+  <target name="git-fetch-version" >
+    <!-- Fetch version hash. -->
+    <exec executable="git" dir="." outputproperty="version.raw" failonerror="false">
+      <arg line='log -1 --format="%H"' />
+    </exec>
+    
+    <condition property="version.fatal" >
+      <contains string="${version.raw}" substring="fatal:" />
+    </condition>
+  </target>
+
+  
+  <target name="git-status" depends="git-fetch-version" unless="version.fatal" >
+    <!-- Update the index. -->
+    <exec executable="git" dir="." failonerror="false">
+      <arg line='update-index -q --ignore-submodules --refresh'/>
+    </exec>
+
+    <!-- Check for unstaged changes. -->
+    <exec executable="git" dir="." failonerror="false" resultproperty="version.changesnotstaged" >
+      <arg line='diff-files --quiet --ignore-submodules --'/>
+    </exec>
+    
+    <!-- Check for uncommited changes. -->
+    <exec executable="git" dir="." failonerror="false" resultproperty="version.changesnotcommitted" >
+      <arg line='diff-index --cached --quiet HEAD --ignore-submodules --'/>
+    </exec>
+    
+    <condition property="version.ok">
+      <and>
+        <equals arg1="${version.changesnotstaged}"    arg2="0" />
+        <equals arg1="${version.changesnotcommitted}" arg2="0" />
+      </and>
+    </condition>
+    
+    <condition property="version.warning" >
+      <isfalse value="${version.ok}" />
+    </condition>
+  </target>
+
+  <target name="git-check-ok" depends="git-status" if="version.ok" >
+    <property name="version" value="${version.raw}" />
+  </target>
+
+  <target name="git-check-warning" depends="git-status" if="version.warning" >
+    <property name="version" value="${version.raw}_modified" />
+    <echo message="WARNING: Project contains unversioned modifications." />
+  </target>
+  
+  <target name="git-check-fatal" depends="git-status" if="version.fatal" >
+    <property name="version" value="unversioned" />
+    <echo message="WARNING: Not a valid git repository." />
+  </target>
+      
+</project>
