@@ -6,7 +6,7 @@ Contains very simple, pure java implementations of:
 - 2D Fast Cosine Transform
 
 Each implementation supports real and complex numbers.
-Each implementation is defined by a single file and may be copied.
+Each implementation is defined by a single file that can easily be copied/pasted elsewhere.
 
 
 ### Build:
