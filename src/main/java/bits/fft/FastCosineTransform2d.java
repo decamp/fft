@@ -7,7 +7,7 @@ package bits.fft;
 
 /**
  * Performs a Fast Discrete Cosine Transform on an square matrix of real values.
- * Currently relies on FastFourierTransform2d, so it could possible by faster
+ * Currently relies on FastFourierTransform2d, so it could by faster
  * if it used a more specialized FCT algorithm.
  * <p/>
  * Not thread safe. For parallel operation, create multiple FastCosineTransform2d
