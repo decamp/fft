@@ -1,7 +1,8 @@
 ### Bits Fast Fourier Transform Library:
-There are many like it, but this one is mine.
+There are many like it, but this one is mine. 
 
-Contains pure java implementations of:
+This is a very simple library that's fairly well optimized. 
+It contains pure java implementations of:
 - 1D Fast Fourier Transform
 - 2D Fast Fourier Transform
 - 1D Fast Cosine Transform  
