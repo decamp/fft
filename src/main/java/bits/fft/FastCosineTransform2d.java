@@ -7,68 +7,12 @@ package bits.fft;
 
 /**
  * Performs a Fast Discrete Cosine Transform on an square matrix of real values.
- * Currently relies on FastFourierTransform2d, so it could by faster
- * if it used a more specialized FCT algorithm.
- * <p/>
- * Not thread safe. For parallel operation, create multiple FastCosineTransform2d
- * objects.
+ * <p>
+ * Not thread safe.
  *
  * @author Philip DeCamp
  */
 public class FastCosineTransform2d {
-
-
-    /**
-     * Factory method to create FastCosineTransform2d objects.
-     * The sole argument, <code>dim</code>, indicates the size
-     * of the matrices on which this transform will operate,
-     * which must be a power-of-two.  For example, if dim == 8,
-     * then all input arrays must be have a length of at least
-     * 8*8.
-     * <p/>
-     * Memory allocation is just above (dim*dim*4+dim*4)*8 bytes.
-     * <p/>
-     *
-     * @param dim Size of one-side of square matrix on which this transform operates.  Must be power-of-two.
-     * @return a new FastCosineTransform2d instance.
-     * @throws IllegalArgumentException if dim is smaller than 2, too large, or not a power-of-two.
-     */
-    public static FastCosineTransform2d create( int dim ) {
-        return new FastCosineTransform2d( dim );
-    }
-
-    /**
-     * Performs a Fast Discrete Cosine Transform on a square matrix of real values.
-     * <br/>
-     * Samples must be stored in a tight-packed format. For a 2x2 matrix: <br/>
-     * <code>[... r_0_0, r_1_0, r_0_1, r_1_1, ...] </code><br/>,
-     * where <code>r_m_n</code> is the real-valued element at position [m,n].
-     *
-     * @param a       Input matrix of real values with size [dim,dim].
-     * @param aOff    Offset into array <code>a</code>
-     * @param inverse Set to <code>true</code> to perform inverse transform.
-     * @param out     Output matrix where DCT coeffs are stored.  Must have space for <code>dim*dim</code> values.
-     * @param outOff  Offset into array<code>out</code>
-     */
-    public void apply( double[] a, int aOff, boolean inverse, double[] out, int outOff ) {
-        if( !inverse ) {
-            shuffle1( a, aOff, mDim, mBits, mWorkA );
-            FastFourierTransform2d.doFft2d( mWorkA, 0, mDim, false );
-            shuffle2( mWorkA, mWeight, mDim, mBits, mWorkB );
-            FastFourierTransform2d.doFft2d( mWorkB, 0, mDim, false );
-            shuffle3( mWorkB, mWeight, mDim, out, outOff );
-        } else {
-            invShuffle1( a, aOff, mInvWeight, mDim, mBits, mWorkA );
-            FastFourierTransform2d.doFft2d( mWorkA, 0, mDim, true );
-            invShuffle2( mWorkA, mInvWeight, mDim, mBits, mWorkB );
-            FastFourierTransform2d.doFft2d( mWorkB, 0, mDim, true );
-            invShuffle3( mWorkB, mDim, mBits, out, outOff );
-        }
-    }
-
-
-
-    private static final int MAX_BITS = 15;
 
     private final int mDim;
     private final int mBits;
@@ -79,67 +23,83 @@ public class FastCosineTransform2d {
     private final double[] mWorkB;
 
 
-    private FastCosineTransform2d( int dim ) {
+    /**
+     * The sole argument, <tt>dim</tt>, indicates the size
+     * of the matrices on which this transform will operate,
+     * which must be a power-of-two. For example, if dim == 8,
+     * then all input arrays must be have a length of at least 8*8.
+     * <p>
+     * Memory footprint is a bit over 32 * ( dim * dim + dim ) bytes.
+     *
+     * @param dim Size of one-side of square matrix on which this transform operates.  Must be power-of-two.
+     * @throws IllegalArgumentException if dim is smaller than 2, too large, or not a power-of-two.
+     */
+    public FastCosineTransform2d( int dim ) {
         mDim  = dim;
-        mBits = computeNumBits( dim );
+        mBits = FastFourierTransform2d.computeBitNum( dim );
 
         mWeight    = new double[dim * 2];
         mInvWeight = new double[dim * 2];
         mWorkA     = new double[dim * dim * 2];
         mWorkB     = new double[dim * dim * 2];
 
-        computeWeightVector( dim, mWeight );
-        invComputeWeightVector( dim, mInvWeight );
+        computeWeightVectors( dim, mWeight, mInvWeight );
     }
-
-
-    private static int computeNumBits( int n ) {
-        int bits = 1; //Start at 1 because 2^0 is invalid.
-        for(; bits < MAX_BITS; bits++ ) {
-            if( (1 << bits) == n ) {
-                break;
-            }
-        }
-
-        if( bits == MAX_BITS ) {
-            throw new IllegalArgumentException( "Dimension must be a power of two, larger than 1, and smaller than 1 << " + MAX_BITS );
-        }
-
-        return bits;
-    }
-
-
-    private static void computeWeightVector( int dim, double[] w) {
-        w[0] = 1.0;
-        w[1] = 0.0;
-        for( int i = 1; i < dim; i++ ) {
-
-            double cos = Math.cos( -i * Math.PI * 0.5 / dim );
-            double sin = -Math.sqrt( 1.0 - cos * cos );
-            w[i*2  ] = 2.0 * cos;
-            w[i*2+1] = 2.0 * sin;
-        }
-    }
-
-
-    private static void invComputeWeightVector( int dim, double[] w ) {
-        final double s = 1.0 / dim;
-        w[0] = 1.0 * s;
-        w[1] = 0.0;
-
-        for( int i = 1; i < dim; i++ ) {
-            double cos = Math.cos( i * Math.PI * 0.5 / dim );
-            double sin = Math.sqrt( 1.0 - cos * cos );
-            w[i*2  ] = cos * s;
-            w[i*2+1] = sin * s;
-        }
-    }
-
 
     /**
-     * 1. Drop complex components <br/>
-     * 2. Butterfly shuffle <br/>
-     * 3. Reverse-bit shuffle <br/>
+     * Performs a Fast Discrete Cosine Transform on a square matrix of real values.
+     * <p>
+     * Samples must be stored in a tight-packed format. For a 2x2 matrix: <br>
+     * <tt>[... r_0_0, r_1_0, r_0_1, r_1_1, ...] </tt><br>,
+     * where <tt>r_m_n</tt> is the real-valued element at position [m,n].
+     *
+     * @param a       Input matrix of real values with size [dim,dim].
+     * @param aOff    Offset into array <tt>a</tt>
+     * @param inverse Set to <tt>true</tt> to perform inverse transform.
+     * @param out     Output matrix where DCT coeffs are stored.  Must have space for <tt>dim*dim</tt> values.
+     * @param outOff  Offset into array<tt>out</tt>
+     */
+    public void apply( double[] a, int aOff, boolean inverse, double[] out, int outOff ) {
+        if( !inverse ) {
+            shuffle1( a, aOff, mDim, mBits, mWorkA );
+            FastFourierTransform2d.transform( mWorkA, 0, mDim, false );
+            shuffle2( mWorkA, mWeight, mDim, mBits, mWorkB );
+            FastFourierTransform2d.transform( mWorkB, 0, mDim, false );
+            shuffle3( mWorkB, mWeight, mDim, out, outOff );
+        } else {
+            invShuffle1( a, aOff, mInvWeight, mDim, mBits, mWorkA );
+            FastFourierTransform2d.transform( mWorkA, 0, mDim, true );
+            invShuffle2( mWorkA, mInvWeight, mDim, mBits, mWorkB );
+            FastFourierTransform2d.transform( mWorkB, 0, mDim, true );
+            invShuffle3( mWorkB, mDim, out, outOff );
+        }
+    }
+
+
+
+    private static void computeWeightVectors( int dim, double[] out, double[] outInv ) {
+        final double s = 1.0 / dim;
+        out[0] = 1.0;
+        out[1] = 0.0;
+        outInv[0] = s;
+        outInv[1] = 0.0;
+
+        for( int i = 1; i < dim; i++ ) {
+            double cos = Math.cos(  i * Math.PI * 0.5 * s );
+            double sin = Math.sqrt( 1.0 - cos * cos );
+
+            out[i*2  ] =  2.0 * cos;
+            out[i*2+1] = -2.0 * sin;
+
+            outInv[i*2  ] = s * cos;
+            outInv[i*2+1] = s * sin;
+        }
+    }
+
+    /**
+     * 1. Drop complex components <br>
+     * 2. Butterfly shuffle       <br>
+     * 3. Reverse-bit shuffle     <br>
      */
     private static void shuffle1( double[] a, int offA, int dim, int bits, double[] out ) {
         final int shift = 30 - bits;
@@ -147,7 +107,7 @@ public class FastCosineTransform2d {
 
         for( int rowOut2 = 0; rowOut2 < dim2; rowOut2 += 2 ) {
             //Bit reversal shuffle.
-            int rowIn = (reverseBits( rowOut2 ) >>> shift);
+            int rowIn = (FastFourierTransform2d.reverse( rowOut2 ) >>> shift);
 
             //Butterfly shuffle.  
             //Equivalent to: if(x < dim / 2) {ia = x * 2;} else {ia = dim*2 - x*2 - 1;}
@@ -166,11 +126,11 @@ public class FastCosineTransform2d {
     }
 
     /**
-     * 1. Apply weight vector. <br/>
-     * 2. Drow imaginary components. <br/>
-     * 3. Transpose. <br/>
-     * 4. Butterfly shuffle. <br/>
-     * 5. Reverse-bit shuffle. <br/>.
+     * 1. Apply weight vector       <br>
+     * 2. Drop imaginary components <br>
+     * 3. Transpose                 <br>
+     * 4. Butterfly shuffle         <br>
+     * 5. Reverse-bit shuffle       <br>
      */
     private static void shuffle2( double[] a, double[] w, int dim, int bits, double[] out ) {
         final int shift = 30 - bits;
@@ -178,7 +138,7 @@ public class FastCosineTransform2d {
 
         for( int rowOut2 = 0; rowOut2 < dim2; rowOut2 += 2 ) {
             //Bit reversal shuffle.
-            int rowA = (reverseBits( rowOut2 ) >>> shift);
+            int rowA = (FastFourierTransform2d.reverse( rowOut2 ) >>> shift);
 
             //Butterfly shuffle.  
             //Equivalent to: if(x < dim / 2) {ia = x * 2;} else {ia = dim*2 - x*2 - 1;}
@@ -199,15 +159,15 @@ public class FastCosineTransform2d {
     }
 
     /**
-     * 1. Apply weight vector.
-     * 2. Transpose
-     * 3. Drop imaginary components.
+     * 1. Apply weight vector.       <br>
+     * 2. Transpose                  <br>
+     * 3. Drop imaginary components. <br>
      *
      * @param a      Input: complex matrix of size [dim,dim]
      * @param w      Weight vector of size [dim] needed to compute DCT from FFT.
      * @param dim    Dimension of transform.  Must be power-of-two.
      * @param out    Output: real-valued matrix of size [dim,dim].
-     * @param offOut Offset into <code>out</code>.
+     * @param offOut Offset into <tt>out</tt>.
      */
     private static void shuffle3( double[] a, double[] w, int dim, double[] out, int offOut ) {
         final int dim2 = 2 * dim;
@@ -224,8 +184,8 @@ public class FastCosineTransform2d {
     }
 
     /**
-     * 1. apply weights, <br/>
-     * 2. reverse-bit shuffle
+     * 1. transform weights,  <br>
+     * 2. reverse-bit shuffle <br>
      */
     private static void invShuffle1( double[] a, int offA, double[] w, int dim, int bits, double[] out ) {
         final int dim2 = dim * 2;
@@ -233,7 +193,7 @@ public class FastCosineTransform2d {
 
         for( int rowIn = 0; rowIn < dim; rowIn++ ) {
             int indA = offA + rowIn;
-            int indOut = (reverseBits( rowIn ) >>> shift);
+            int indOut = (FastFourierTransform2d.reverse( rowIn ) >>> shift);
             double wReal = w[rowIn * 2];
             double wImag = w[rowIn * 2 + 1];
 
@@ -246,11 +206,11 @@ public class FastCosineTransform2d {
     }
 
     /**
-     * 1. drop imaginary component<br/>
-     * 2. reverse butterfly shuffle<br/>
-     * 3. transpose
-     * 4. apply weights
-     * 5. bit reversal shuffle<br/>
+     * 1. Drop imaginary component  <br>
+     * 2. Reverse butterfly shuffle <br>
+     * 3. Transpose                 <br>
+     * 4. Transform weights         <br>
+     * 5. Reverse-bit shuffle       <br>
      */
     private static void invShuffle2( double[] a, double[] w, int dim, int bits, double[] out ) {
         final int shift = 30 - bits;
@@ -258,7 +218,7 @@ public class FastCosineTransform2d {
 
         for( int i2 = 0; i2 < dim2; i2 += 2 ) {
             //Bit reverse shuffle.
-            final int col2 = reverseBits( i2 ) >>> shift;
+            final int col2 = FastFourierTransform2d.reverse( i2 ) >>> shift;
             final int indA = col2 * dim;
 
             final double wReal = w[col2];
@@ -276,11 +236,10 @@ public class FastCosineTransform2d {
     }
 
     /**
-     * 1. drop imaginary component<br/>
-     * 2. reverse butterfly shuffle<br/>
+     * 1. Drop imaginary component   <br>
+     * 2. Reverse butterfly shuffle  <br>
      */
-    private static void invShuffle3( double[] a, int dim, int bits, double[] out, int offOut ) {
-        final int shift = 32 - bits;
+    private static void invShuffle3( double[] a, int dim, double[] out, int offOut ) {
         final int dim2 = dim * 2;
 
         for( int i2 = 0; i2 < dim2; i2 += 2 ) {
@@ -292,18 +251,6 @@ public class FastCosineTransform2d {
                 out[j + indO] = a[i2 + j * dim2];
             }
         }
-    }
-
-    /**
-     * @return Version of val with reversed bits.
-     */
-    private static int reverseBits( int val ) {
-        long v = (((((val >>> 24)       ) * 0x0202020202L & 0x010884422010L) % 1023L)      ) |
-                 (((((val >>> 16) & 0xFF) * 0x0202020202L & 0x010884422010L) % 1023L) << 8 ) |
-                 (((((val >>>  8) & 0xFF) * 0x0202020202L & 0x010884422010L) % 1023L) << 16) |
-                 (((((val       ) & 0xFF) * 0x0202020202L & 0x010884422010L) % 1023L) << 24);
-
-        return (int)v;
     }
 
 }

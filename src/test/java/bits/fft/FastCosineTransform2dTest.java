@@ -9,8 +9,7 @@ import org.junit.Test;
 import java.util.Random;
 
 public class FastCosineTransform2dTest {
-    
-    
+
     private static final int OFF_0 = 3;
     private static final int DIM_0 = 8;
     
@@ -152,7 +151,6 @@ public class FastCosineTransform2dTest {
     };
 
     
-    
     @Test
     public void testCorrect() {
         final int dim = DIM_0;
@@ -163,7 +161,7 @@ public class FastCosineTransform2dTest {
         final double[] c = new double[len+off];
         
         
-        FastCosineTransform2d trans = FastCosineTransform2d.create( dim );
+        FastCosineTransform2d trans = new FastCosineTransform2d( dim );
         
         trans.apply(INPUT_0, off, false, b, off);
         trans.apply(b, off, true, c, off);
@@ -190,7 +188,7 @@ public class FastCosineTransform2dTest {
         }
         
         double[] w = new double[dim*dim];
-        FastCosineTransform2d trans = FastCosineTransform2d.create( dim );
+        FastCosineTransform2d trans = new FastCosineTransform2d( dim );
 
         long t0 = System.nanoTime();
 
@@ -201,5 +199,5 @@ public class FastCosineTransform2dTest {
         double secs = ( System.nanoTime() - t0 ) / 1000000000.0;
         System.out.println( "FastCosineTransform2d seconds: " + secs );
     }
-       
+
 }

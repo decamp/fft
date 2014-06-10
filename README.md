@@ -1,11 +1,14 @@
 ### Bits Fast Fourier Transform Library:
-Contains very simple, pure java implementations of:
+There are many like it, but this one is mine.
+
+Contains pure java implementations of:
 - 1D Fast Fourier Transform
 - 2D Fast Fourier Transform
-- 1D Fast Cosine Transform
+- 1D Fast Cosine Transform  
 - 2D Fast Cosine Transform
 
-The fourier transforms support real and complex numbers.
+1D transforms only operate on vectors where the length is a power-of-two.
+2D transforms only operate on square matrices where the size is a power-of-two.
 
 
 ### Build:
@@ -13,7 +16,7 @@ $ ant
 
 
 ### Runtime:
-After build, add all jars in **target** directories to your project.
+After building, add all jars in **target** directory to your project.
 
 
 ### Dependencies:

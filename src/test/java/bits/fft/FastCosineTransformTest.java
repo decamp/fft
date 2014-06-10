@@ -64,7 +64,7 @@ public class FastCosineTransformTest {
         double[] b = new double[dim + off];
         double[] c = new double[dim + off];
 
-        FastCosineTransform trans = FastCosineTransform.create( dim );
+        FastCosineTransform trans = new FastCosineTransform( dim );
         trans.apply( INPUT_0, off, false, b, off );
         trans.apply( b, off, true, c, off );
 
@@ -92,7 +92,7 @@ public class FastCosineTransformTest {
 
 
         double[] b = new double[dim];
-        FastCosineTransform trans = FastCosineTransform.create( dim );
+        FastCosineTransform trans = new FastCosineTransform( dim );
 
         Timer.start();
 

@@ -630,7 +630,7 @@ public class FastFourierTransform2dTest {
         }
 
         double[] out = new double[len];
-        FastFourierTransform2d trans = FastFourierTransform2d.create( dim );
+        FastFourierTransform2d trans = new FastFourierTransform2d( dim );
 
         Timer.start();
 
@@ -650,7 +650,7 @@ public class FastFourierTransform2dTest {
         double[] b = new double[len + off];
         double[] c = new double[len + off];
 
-        FastFourierTransform2d trans = FastFourierTransform2d.create( dim );
+        FastFourierTransform2d trans = new FastFourierTransform2d( dim );
         trans.applyComplex( INPUT_0, OFFSET_0, false, b, off );
         trans.applyComplex( b, off, true, c, off );
 
@@ -675,7 +675,7 @@ public class FastFourierTransform2dTest {
         double[] b = new double[len + off];
         double[] c = new double[len + off];
 
-        FastFourierTransform2d trans = FastFourierTransform2d.create( dim );
+        FastFourierTransform2d trans = new FastFourierTransform2d( dim );
         trans.applyReal( INPUT_1, OFFSET_1, false, b, off );
         trans.applyReal( INPUT_1, OFFSET_1, true, c, off );
 

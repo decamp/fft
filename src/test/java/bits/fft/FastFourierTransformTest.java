@@ -5,7 +5,6 @@
  */
 package bits.fft;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import java.util.Random;
 
@@ -185,8 +184,6 @@ public class FastFourierTransformTest {
     };
 
 
-    @Test
-    @Ignore
     public void genMatrix() {
         int off = 3;
         int dim = 16;
@@ -216,7 +213,7 @@ public class FastFourierTransformTest {
         }
 
         double[] out = new double[len * 2];
-        FastFourierTransform trans = FastFourierTransform.create( len );
+        FastFourierTransform trans = new FastFourierTransform( len );
 
         Timer.start();
 
@@ -237,7 +234,7 @@ public class FastFourierTransformTest {
         double[] b = new double[len + off];
         double[] c = new double[len + off];
 
-        FastFourierTransform trans = FastFourierTransform.create( dim );
+        FastFourierTransform trans = new FastFourierTransform( dim );
         trans.applyComplex( INPUT_0, OFFSET_0, false, b, off );
         trans.applyComplex( b, off, true, c, off );
 
@@ -261,7 +258,7 @@ public class FastFourierTransformTest {
         double[] b = new double[len + off];
         double[] c = new double[len + off];
 
-        FastFourierTransform trans = FastFourierTransform.create( dim );
+        FastFourierTransform trans = new FastFourierTransform( dim );
         trans.applyReal( INPUT_1, OFFSET_1, false, b, off );
         trans.applyReal( INPUT_1, OFFSET_1, true, c, off );
 
