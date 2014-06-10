@@ -1,4 +1,4 @@
-### Bits Fast Fourier Transform Library:
+### Fast Fourier Transform Library:
 There are many like it, but this one is mine. 
 
 This is a very simple library that's fairly well optimized. 
