@@ -617,8 +617,7 @@ public class FastFourierTransform2dTest {
     };
 
 
-    @Test
-    public void testSpeed() {
+    @Test public void testSpeed() {
         int dim = 512;
         int len = dim * dim * 2;
 

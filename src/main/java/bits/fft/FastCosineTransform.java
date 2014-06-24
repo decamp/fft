@@ -103,8 +103,14 @@ public class FastCosineTransform {
             //Butterfly shuffle.
             rowIn = rowIn + (rowIn / dim) * (dim2 - 2 * rowIn - 1);
 
-            out[rowOut2] = a[rowIn + offA];
-            out[rowOut2 + 1] = 0.0;
+            try {
+                out[rowOut2] = a[rowIn + offA];
+                out[rowOut2 + 1] = 0.0;
+            } catch( ArrayIndexOutOfBoundsException ex ) {
+                System.out.println( String.format("%32s\n", Integer.toBinaryString( rowOut2 ) ).replace(' ', '0') );
+                System.out.println( String.format("%32s\n", Integer.toBinaryString( FastFourierTransform.reverse( rowOut2 ) ) ).replace(' ', '0') );
+                throw ex;
+            }
         }
     }
 

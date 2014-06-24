@@ -217,7 +217,7 @@ public class FastFourierTransformTest {
 
         Timer.start();
 
-        for( int i = 0; i < 5000; i++ ) {
+        for( int i = 0; i < 10000; i++ ) {
             trans.applyComplex( x, 0, false, out, 0 );
         }
 
